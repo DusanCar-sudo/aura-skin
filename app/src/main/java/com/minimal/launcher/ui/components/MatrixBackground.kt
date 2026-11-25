@@ -42,7 +42,7 @@ fun MatrixBackground(drifting: Boolean, content: @Composable () -> Unit) {
                     val canvas = android.graphics.Canvas(tile)
                     val ink = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                         typeface = Typeface.MONOSPACE
-                        textSize = 10.dp.toPx()
+                        textSize = 11.dp.toPx()
                     }
                     val glyphs = "01:/+=|<>[]ｱｲｴｶｷｻｼﾂﾈﾊﾐﾘ"
                     val rng = Random(603)
@@ -50,7 +50,8 @@ fun MatrixBackground(drifting: Boolean, content: @Composable () -> Unit) {
                         val start = rng.nextInt(38)
                         val length = rng.nextInt(7, 24)
                         for (step in 0 until length) {
-                            val shade = 11 + 13 * step / length + rng.nextInt(3)
+                            val trailShade = 23 + 32 * step / (length - 1)
+                            val shade = if (step == length - 1) 76 else trailShade + rng.nextInt(4)
                             ink.color = android.graphics.Color.rgb(shade, shade + 1, shade + 2)
                             canvas.drawText(glyphs[rng.nextInt(glyphs.length)].toString(),
                                 (column + .24f) * cell, ((start + step) % 38 + .85f) * cell, ink)
