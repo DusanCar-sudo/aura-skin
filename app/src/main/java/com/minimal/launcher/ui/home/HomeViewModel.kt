@@ -41,10 +41,11 @@ class HomeViewModel(
         updateTime()
     }
     
-    private fun loadApps() {
+    fun loadApps() {
         viewModelScope.launch {
             val apps = appsRepository.getInstalledApps(context.packageName)
             allApps.value = apps
+            updateFavorites()
         }
     }
     
@@ -77,15 +78,15 @@ class HomeViewModel(
     
     private fun updateTime() {
         viewModelScope.launch {
-            val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+            val timeFormat = android.text.format.DateFormat.getTimeFormat(context)
             val dateFormat = SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault())
             while (true) {
-                kotlinx.coroutines.delay(1000)
                 val now = Date()
                 _uiState.value = _uiState.value.copy(
                     currentTime = timeFormat.format(now),
                     currentDate = dateFormat.format(now)
                 )
+                kotlinx.coroutines.delay(60_000L - now.time % 60_000L)
             }
         }
     }

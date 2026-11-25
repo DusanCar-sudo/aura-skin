@@ -46,7 +46,7 @@ class AppsRepository(private val context: Context) {
         }
         
         // Sort alphabetically by label
-        appItems.sortedBy { it.label.lowercase() }
+        appItems.distinctBy { it.packageName }.sortedBy { it.label.lowercase() }
     }
     
     suspend fun launchApp(packageName: String): Boolean = withContext(Dispatchers.IO) {

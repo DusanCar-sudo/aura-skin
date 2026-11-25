@@ -36,7 +36,7 @@ class DrawerViewModel(
         observeHiddenApps()
     }
     
-    private fun loadApps() {
+    fun loadApps() {
         viewModelScope.launch {
             val apps = appsRepository.getInstalledApps(context.packageName)
             _uiState.value = _uiState.value.copy(allApps = apps)

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Minimal Launcher</string>
+    <string name="aura">Aura</string>
+    <string name="app_name">Aura Home</string>
     <string name="search_apps">Search apps...</string>
     <string name="no_apps_found">No apps found.</string>
     <string name="no_matching_apps">No matching apps.</string>
@@ -27,7 +28,9 @@
     <string name="version">Version</string>
     <string name="swipe_up">Swipe up: open drawer</string>
     <string name="swipe_down">Swipe down: notification shade</string>
-    <string name="welcome_title">Welcome to Minimal Launcher</string>
+    <string name="welcome_title">Welcome to Aura Home</string>
     <string name="welcome_message">A calm, text-first launcher experience.</string>
     <string name="get_started">Get Started</string>
+    <string name="home">Home</string>
+    <string name="all_apps">All apps</string>
 </resources>

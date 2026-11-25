@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 
 data class SettingsUiState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
-    val showIcons: Boolean = false,
+    val showIcons: Boolean = true,
     val favorites: List<AppItem> = emptyList(),
     val favoritePackages: Set<String> = emptySet(),
     val hiddenApps: List<AppItem> = emptyList(),
@@ -75,7 +75,7 @@ class SettingsViewModel(
         }
     }
     
-    private fun loadAllApps() {
+    fun loadAllApps() {
         viewModelScope.launch {
             val apps = appsRepository.getInstalledApps(context.packageName)
             _uiState.value = _uiState.value.copy(allApps = apps)
