@@ -24,7 +24,7 @@ class SettingsRepository(private val context: Context) {
     }
     
     val showIconsFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
-        preferences[SHOW_ICONS_KEY] ?: false
+        preferences[SHOW_ICONS_KEY] ?: true
     }
     
     val onboardingCompletedFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
