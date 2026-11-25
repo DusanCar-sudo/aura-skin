@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.geometry.Offset
 import com.minimal.launcher.R
 import com.minimal.launcher.model.AppItem
+import com.minimal.launcher.ui.components.rememberSparkPhase
 import com.minimal.launcher.ui.components.AppListItem
 import com.minimal.launcher.ui.components.AppMenuSheet
 import com.minimal.launcher.ui.components.ClockHeader
@@ -64,9 +65,10 @@ fun HomeScreen(
                 if (uiState.favorites.isEmpty()) {
                     Text(stringResource(R.string.no_favorites), style = MaterialTheme.typography.bodyMedium)
                 } else {
+                    val sparkPhase = if (showIcons) rememberSparkPhase() else null
                     LazyVerticalGrid(columns = GridCells.Adaptive(76.dp)) {
                         items(uiState.favorites, key = { it.packageName }) { app ->
-                            AppListItem(app, showIcons, { onAppClick(app) }, { onAppLongPress(app) })
+                            AppListItem(app, sparkPhase, { onAppClick(app) }, { onAppLongPress(app) })
                         }
                     }
                 }

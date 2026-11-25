@@ -30,7 +30,7 @@ private val icons = LruCache<String, ImageBitmap>(96)
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun AppListItem(app: AppItem, showIcons: Boolean, onClick: () -> Unit, onLongClick: () -> Unit) {
+fun AppListItem(app: AppItem, sparkPhase: State<Float>?, onClick: () -> Unit, onLongClick: () -> Unit) {
     val pm = LocalContext.current.packageManager
     val size = with(LocalDensity.current) { 48.dp.roundToPx() }
     Column(
@@ -40,7 +40,7 @@ fun AppListItem(app: AppItem, showIcons: Boolean, onClick: () -> Unit, onLongCli
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        if (showIcons) {
+        if (sparkPhase != null) {
             val component = ComponentName(app.packageName, app.componentName)
             val key = "${component.flattenToString()}:$size"
             val bitmap by produceState(icons.get(key), key) {
@@ -49,8 +49,11 @@ fun AppListItem(app: AppItem, showIcons: Boolean, onClick: () -> Unit, onLongCli
                         .toBitmap(size, size).asImageBitmap().also { icons.put(key, it) }
                 }
             }
-            Box(Modifier.size(48.dp)) {
-                bitmap?.let { Image(it, contentDescription = null, modifier = Modifier.fillMaxSize()) }
+            Box(
+                modifier = Modifier.size(56.dp).electricEdge(sparkPhase, key.hashCode(), MaterialTheme.colorScheme.primary),
+                contentAlignment = Alignment.Center
+            ) {
+                bitmap?.let { Image(it, contentDescription = null, modifier = Modifier.size(46.dp)) }
             }
             Spacer(Modifier.height(7.dp))
         }
