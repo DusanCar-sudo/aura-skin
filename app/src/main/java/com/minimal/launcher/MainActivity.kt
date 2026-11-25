@@ -16,6 +16,7 @@ import com.minimal.launcher.data.HiddenAppsRepository
 import com.minimal.launcher.data.SettingsRepository
 import com.minimal.launcher.model.ThemeMode
 import com.minimal.launcher.theme.MinimalLauncherTheme
+import com.minimal.launcher.ui.components.MatrixBackground
 import com.minimal.launcher.ui.charging.ChargingSurface
 import com.minimal.launcher.ui.drawer.DrawerScreen
 import com.minimal.launcher.ui.drawer.DrawerViewModel
@@ -153,33 +154,37 @@ private fun LauncherContent(
     when (currentScreen) {
         is LauncherScreen.Home -> {
             val uiState by homeViewModel.uiState.collectAsState()
-            HomeScreen(
-                onSettings = { currentScreen = LauncherScreen.Settings },
-                showIcons = showIcons,
-                uiState = uiState,
-                onAppClick = homeViewModel::onAppClick,
-                onAppLongPress = homeViewModel::onAppLongPress,
-                onOpenDrawer = { drawerViewModel.onSearchQueryChange(""); currentScreen = LauncherScreen.Drawer },
-                onDismissAppMenu = homeViewModel::dismissAppMenu,
-                onToggleFavorite = homeViewModel::toggleFavorite,
-                onHideApp = homeViewModel::hideApp,
-                onOpenAppInfo = homeViewModel::openAppInfo
-            )
+            MatrixBackground(drifting = true) {
+                HomeScreen(
+                    onSettings = { currentScreen = LauncherScreen.Settings },
+                    showIcons = showIcons,
+                    uiState = uiState,
+                    onAppClick = homeViewModel::onAppClick,
+                    onAppLongPress = homeViewModel::onAppLongPress,
+                    onOpenDrawer = { drawerViewModel.onSearchQueryChange(""); currentScreen = LauncherScreen.Drawer },
+                    onDismissAppMenu = homeViewModel::dismissAppMenu,
+                    onToggleFavorite = homeViewModel::toggleFavorite,
+                    onHideApp = homeViewModel::hideApp,
+                    onOpenAppInfo = homeViewModel::openAppInfo
+                )
+            }
         }
         is LauncherScreen.Drawer -> {
             val uiState by drawerViewModel.uiState.collectAsState()
-            DrawerScreen(
-                showIcons = showIcons,
-                uiState = uiState,
-                onSearchQueryChange = drawerViewModel::onSearchQueryChange,
-                onAppClick = drawerViewModel::onAppClick,
-                onAppLongPress = drawerViewModel::onAppLongPress,
-                onCloseDrawer = { currentScreen = LauncherScreen.Home },
-                onDismissAppMenu = drawerViewModel::dismissAppMenu,
-                onToggleFavorite = drawerViewModel::toggleFavorite,
-                onHideApp = drawerViewModel::hideApp,
-                onOpenAppInfo = drawerViewModel::openAppInfo
-            )
+            MatrixBackground(drifting = false) {
+                DrawerScreen(
+                    showIcons = showIcons,
+                    uiState = uiState,
+                    onSearchQueryChange = drawerViewModel::onSearchQueryChange,
+                    onAppClick = drawerViewModel::onAppClick,
+                    onAppLongPress = drawerViewModel::onAppLongPress,
+                    onCloseDrawer = { currentScreen = LauncherScreen.Home },
+                    onDismissAppMenu = drawerViewModel::dismissAppMenu,
+                    onToggleFavorite = drawerViewModel::toggleFavorite,
+                    onHideApp = drawerViewModel::hideApp,
+                    onOpenAppInfo = drawerViewModel::openAppInfo
+                )
+            }
         }
         is LauncherScreen.Settings -> {
             val uiState by settingsViewModel.uiState.collectAsState()

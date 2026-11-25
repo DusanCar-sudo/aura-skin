@@ -15,7 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.geometry.Offset
 import com.minimal.launcher.R
 import com.minimal.launcher.model.AppItem
 import com.minimal.launcher.ui.components.rememberSparkPhase
@@ -48,14 +47,6 @@ fun HomeScreen(
                 ) { _, delta -> distance += delta }
             }
     ) {
-        val tint = MaterialTheme.colorScheme.primary
-        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-            val center = Offset(size.width * .82f, size.height * .15f)
-            drawRect(androidx.compose.ui.graphics.Brush.radialGradient(
-                colors = listOf(tint.copy(alpha = .16f), tint.copy(alpha = 0f)),
-                center = center, radius = size.width * .92f
-            ))
-        }
         Column(Modifier.fillMaxSize().padding(horizontal = 18.dp),
             horizontalAlignment = Alignment.CenterHorizontally) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
