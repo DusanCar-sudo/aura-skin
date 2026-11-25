@@ -40,14 +40,14 @@ class FavoritesRepository(private val context: Context) {
     
     suspend fun addFavorite(packageName: String) {
         context.dataStore.edit { preferences ->
-            val current = preferences[FAVORITES_KEY] ?: emptySet()
+            val current = preferences[FAVORITES_KEY] ?: DEFAULT_FAVORITES
             preferences[FAVORITES_KEY] = current + packageName
         }
     }
     
     suspend fun removeFavorite(packageName: String) {
         context.dataStore.edit { preferences ->
-            val current = preferences[FAVORITES_KEY] ?: emptySet()
+            val current = preferences[FAVORITES_KEY] ?: DEFAULT_FAVORITES
             preferences[FAVORITES_KEY] = current - packageName
         }
     }

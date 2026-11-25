@@ -8,7 +8,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.minimal.launcher"
+        applicationId = "dev.aura.iconhome"
         minSdk = 28
         targetSdk = 34
         versionCode = 1

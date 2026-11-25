@@ -57,14 +57,10 @@ fun SettingsScreen(
             }
             
             item {
-                var showIcons by remember { mutableStateOf(uiState.showIcons) }
                 SwitchSettingItem(
                     label = stringResource(R.string.show_icons),
-                    checked = showIcons,
-                    onCheckedChange = { 
-                        showIcons = it
-                        onShowIconsChange(it)
-                    }
+                    checked = uiState.showIcons,
+                    onCheckedChange = onShowIconsChange
                 )
             }
             
