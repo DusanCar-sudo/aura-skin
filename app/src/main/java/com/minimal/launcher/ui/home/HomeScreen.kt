@@ -53,6 +53,7 @@ fun HomeScreen(
                 TextButton(onClick = onSettings) { Text(stringResource(R.string.settings)) }
             }
             ClockHeader(uiState.currentTime, uiState.currentDate)
+            WeatherWidget()
             Box(Modifier.weight(1f), contentAlignment = Alignment.BottomCenter) {
                 if (uiState.favorites.isEmpty()) {
                     Text(stringResource(R.string.no_favorites), style = MaterialTheme.typography.bodyMedium)

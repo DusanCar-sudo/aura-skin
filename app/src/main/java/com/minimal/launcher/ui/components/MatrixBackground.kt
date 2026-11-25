@@ -2,7 +2,6 @@ package com.minimal.launcher.ui.components
 
 import android.graphics.Bitmap
 import android.graphics.BitmapShader
-import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Shader
 import android.graphics.Typeface
@@ -14,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.unit.dp
 import com.minimal.launcher.theme.MinimalLauncherTheme
@@ -21,21 +21,18 @@ import kotlin.random.Random
 import kotlinx.coroutines.delay
 
 @Composable
-fun MatrixBackground(drifting: Boolean, content: @Composable () -> Unit) {
-    val elapsed = produceState(0L, drifting) {
-        value = 0L
-        if (drifting) {
-            val start = withFrameMillis { it }
-            while (true) {
-                value = withFrameMillis { it - start }
-                delay(250)
-            }
+fun MatrixBackground(content: @Composable () -> Unit) {
+    val elapsed = produceState(0L) {
+        val start = withFrameMillis { it }
+        while (true) {
+            value = withFrameMillis { it - start }
+            delay(36)
         }
     }
     MinimalLauncherTheme(darkTheme = true) {
         CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground) {
             Box(Modifier.fillMaxSize()) {
-                Canvas(Modifier.fillMaxSize().drawWithCache {
+                Canvas(Modifier.fillMaxSize().graphicsLayer().drawWithCache {
                     val cell = 13.dp.roundToPx()
                     val tile = Bitmap.createBitmap(cell * 29, cell * 38, Bitmap.Config.ARGB_8888)
                     tile.eraseColor(android.graphics.Color.rgb(6, 7, 8))
@@ -59,12 +56,19 @@ fun MatrixBackground(drifting: Boolean, content: @Composable () -> Unit) {
                     }
                     val pattern = BitmapShader(tile, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
                     val paint = Paint().apply { shader = pattern }
-                    val matrix = Matrix()
-                    val speed = 2.dp.toPx() / 1000f
+                    val columns = kotlin.math.ceil(size.width / cell).toInt()
+                    val speeds = FloatArray(columns) { rng.nextInt(32, 85).dp.toPx() / 1000f }
                     onDrawBehind {
-                        matrix.setTranslate(0f, (elapsed.value * speed % tile.height).toInt().toFloat())
-                        pattern.setLocalMatrix(matrix)
-                        drawContext.canvas.nativeCanvas.drawRect(0f, 0f, size.width, size.height, paint)
+                        val native = drawContext.canvas.nativeCanvas
+                        val time = elapsed.value
+                        for (column in speeds.indices) {
+                            val left = (column * cell).toFloat()
+                            val y = (time * speeds[column] % tile.height).toInt().toFloat()
+                            native.save()
+                            native.translate(0f, y)
+                            native.drawRect(left, -y, left + cell, size.height - y, paint)
+                            native.restore()
+                        }
                     }
                 }) {}
                 content()

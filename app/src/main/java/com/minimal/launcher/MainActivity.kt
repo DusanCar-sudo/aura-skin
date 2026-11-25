@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -16,6 +17,7 @@ import com.minimal.launcher.data.HiddenAppsRepository
 import com.minimal.launcher.data.SettingsRepository
 import com.minimal.launcher.model.ThemeMode
 import com.minimal.launcher.theme.MinimalLauncherTheme
+import com.minimal.launcher.ui.components.inwardEdgeSwipe
 import com.minimal.launcher.ui.components.MatrixBackground
 import com.minimal.launcher.ui.charging.ChargingSurface
 import com.minimal.launcher.ui.drawer.DrawerScreen
@@ -151,53 +153,61 @@ private fun LauncherContent(
     androidx.activity.compose.BackHandler(currentScreen != LauncherScreen.Home) {
         currentScreen = LauncherScreen.Home
     }
-    when (currentScreen) {
-        is LauncherScreen.Home -> {
-            val uiState by homeViewModel.uiState.collectAsState()
-            MatrixBackground(drifting = true) {
-                HomeScreen(
-                    onSettings = { currentScreen = LauncherScreen.Settings },
-                    showIcons = showIcons,
+    val openDrawer = {
+        drawerViewModel.onSearchQueryChange("")
+        currentScreen = LauncherScreen.Drawer
+    }
+    Box(Modifier.fillMaxSize().inwardEdgeSwipe(currentScreen) {
+        if (currentScreen == LauncherScreen.Home) openDrawer() else currentScreen = LauncherScreen.Home
+    }) {
+        when (currentScreen) {
+            is LauncherScreen.Home -> {
+                val uiState by homeViewModel.uiState.collectAsState()
+                MatrixBackground {
+                    HomeScreen(
+                        onSettings = { currentScreen = LauncherScreen.Settings },
+                        showIcons = showIcons,
+                        uiState = uiState,
+                        onAppClick = homeViewModel::onAppClick,
+                        onAppLongPress = homeViewModel::onAppLongPress,
+                        onOpenDrawer = openDrawer,
+                        onDismissAppMenu = homeViewModel::dismissAppMenu,
+                        onToggleFavorite = homeViewModel::toggleFavorite,
+                        onHideApp = homeViewModel::hideApp,
+                        onOpenAppInfo = homeViewModel::openAppInfo
+                    )
+                }
+            }
+            is LauncherScreen.Drawer -> {
+                val uiState by drawerViewModel.uiState.collectAsState()
+                MatrixBackground {
+                    DrawerScreen(
+                        showIcons = showIcons,
+                        uiState = uiState,
+                        onSearchQueryChange = drawerViewModel::onSearchQueryChange,
+                        onAppClick = drawerViewModel::onAppClick,
+                        onAppLongPress = drawerViewModel::onAppLongPress,
+                        onCloseDrawer = { currentScreen = LauncherScreen.Home },
+                        onDismissAppMenu = drawerViewModel::dismissAppMenu,
+                        onToggleFavorite = drawerViewModel::toggleFavorite,
+                        onHideApp = drawerViewModel::hideApp,
+                        onOpenAppInfo = drawerViewModel::openAppInfo
+                    )
+                }
+            }
+            is LauncherScreen.Settings -> {
+                val uiState by settingsViewModel.uiState.collectAsState()
+                SettingsScreen(
                     uiState = uiState,
-                    onAppClick = homeViewModel::onAppClick,
-                    onAppLongPress = homeViewModel::onAppLongPress,
-                    onOpenDrawer = { drawerViewModel.onSearchQueryChange(""); currentScreen = LauncherScreen.Drawer },
-                    onDismissAppMenu = homeViewModel::dismissAppMenu,
-                    onToggleFavorite = homeViewModel::toggleFavorite,
-                    onHideApp = homeViewModel::hideApp,
-                    onOpenAppInfo = homeViewModel::openAppInfo
+                    onThemeChange = settingsViewModel::setThemeMode,
+                    onShowIconsChange = settingsViewModel::setShowIcons,
+                    onRemoveFavorite = settingsViewModel::removeFavorite,
+                    onUnhideApp = settingsViewModel::unhideApp,
+                    onResetFavorites = settingsViewModel::resetFavoritesToDefaults,
+                    onSetDefaultLauncher = { AppLauncher.openDefaultLauncherSettings(context) },
+                    onBack = { currentScreen = LauncherScreen.Home }
                 )
             }
-        }
-        is LauncherScreen.Drawer -> {
-            val uiState by drawerViewModel.uiState.collectAsState()
-            MatrixBackground(drifting = false) {
-                DrawerScreen(
-                    showIcons = showIcons,
-                    uiState = uiState,
-                    onSearchQueryChange = drawerViewModel::onSearchQueryChange,
-                    onAppClick = drawerViewModel::onAppClick,
-                    onAppLongPress = drawerViewModel::onAppLongPress,
-                    onCloseDrawer = { currentScreen = LauncherScreen.Home },
-                    onDismissAppMenu = drawerViewModel::dismissAppMenu,
-                    onToggleFavorite = drawerViewModel::toggleFavorite,
-                    onHideApp = drawerViewModel::hideApp,
-                    onOpenAppInfo = drawerViewModel::openAppInfo
-                )
-            }
-        }
-        is LauncherScreen.Settings -> {
-            val uiState by settingsViewModel.uiState.collectAsState()
-            SettingsScreen(
-                uiState = uiState,
-                onThemeChange = settingsViewModel::setThemeMode,
-                onShowIconsChange = settingsViewModel::setShowIcons,
-                onRemoveFavorite = settingsViewModel::removeFavorite,
-                onUnhideApp = settingsViewModel::unhideApp,
-                onResetFavorites = settingsViewModel::resetFavoritesToDefaults,
-                onSetDefaultLauncher = { AppLauncher.openDefaultLauncherSettings(context) },
-                onBack = { currentScreen = LauncherScreen.Home }
-            )
         }
     }
 }
