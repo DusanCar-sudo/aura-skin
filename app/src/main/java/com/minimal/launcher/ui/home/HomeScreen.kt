@@ -2,6 +2,7 @@ package com.minimal.launcher.ui.home
 
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -65,8 +66,9 @@ fun HomeScreen(
                 if (uiState.favorites.isEmpty()) {
                     Text(stringResource(R.string.no_favorites), style = MaterialTheme.typography.bodyMedium)
                 } else {
-                    val sparkPhase = if (showIcons) rememberSparkPhase() else null
-                    LazyVerticalGrid(columns = GridCells.Adaptive(76.dp)) {
+                    val gridState = rememberLazyGridState()
+                    val sparkPhase = if (showIcons) rememberSparkPhase(gridState.isScrollInProgress) else null
+                    LazyVerticalGrid(state = gridState, columns = GridCells.Adaptive(76.dp)) {
                         items(uiState.favorites, key = { it.packageName }) { app ->
                             AppListItem(app, sparkPhase, { onAppClick(app) }, { onAppLongPress(app) })
                         }

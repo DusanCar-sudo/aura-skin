@@ -1,6 +1,8 @@
 package com.minimal.launcher.ui.drawer
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -10,7 +12,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.minimal.launcher.R
 import com.minimal.launcher.model.AppItem
@@ -38,7 +42,13 @@ fun DrawerScreen(
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.all_apps), style = MaterialTheme.typography.headlineMedium)
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Image(painterResource(R.drawable.aura_rainbow), contentDescription = null,
+                        modifier = Modifier.size(36.dp))
+                    Text(stringResource(R.string.aura), style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.SemiBold)
+                }
                 TextButton(onClick = onCloseDrawer) { Text(stringResource(R.string.home)) }
             }
             SearchField(
@@ -60,8 +70,9 @@ fun DrawerScreen(
                 )
                 Spacer(modifier = Modifier.weight(1f))
             } else {
-                val sparkPhase = if (showIcons) rememberSparkPhase() else null
-                LazyVerticalGrid(columns = GridCells.Adaptive(76.dp),
+                val gridState = rememberLazyGridState()
+                val sparkPhase = if (showIcons) rememberSparkPhase(gridState.isScrollInProgress) else null
+                LazyVerticalGrid(state = gridState, columns = GridCells.Adaptive(76.dp),
                     contentPadding = PaddingValues(12.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
