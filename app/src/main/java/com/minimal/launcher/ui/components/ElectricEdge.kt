@@ -33,7 +33,7 @@ fun rememberSparkPhase(scrolling: Boolean): State<Float> {
 }
 
 fun Modifier.electricEdge(phase: State<Float>, seed: Int, tint: Color) = drawWithCache {
-    val inset = 2.5.dp.toPx()
+    val inset = 4.dp.toPx()
     val radius = 13.dp.toPx()
     val outline = android.graphics.Path().apply {
         addRoundRect(inset, inset, size.width - inset, size.height - inset,
@@ -46,30 +46,50 @@ fun Modifier.electricEdge(phase: State<Float>, seed: Int, tint: Color) = drawWit
     val position = FloatArray(2)
     val tangent = FloatArray(2)
     val bolt = Path()
-    // Offsets across the track give the short tail its lightning shape.
-    val bends = floatArrayOf(0f, .45f, -.8f, .3f, -1f, .8f, 0f)
-    val amplitude = 1.6.dp.toPx()
-    val spacing = 3.dp.toPx()
-    val line = Stroke(.9.dp.toPx())
-    val halo = Stroke(4.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
-    val core = Stroke(1.4.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
-    val spark = Color(0xFF8A68FF)
+    val forks = Path()
+    val random = kotlin.random.Random(seed)
+    // Precompute discharge shapes so the drawer allocates no random samples per frame.
+    val shapes = Array(16) {
+        FloatArray(17) { (random.nextFloat() - .5f) * 4.4f.dp.toPx() }
+    }
+    val spacing = 1.85.dp.toPx()
+    val line = Stroke(.7.dp.toPx())
+    val glow = Stroke(5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+    val arc = Stroke(2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+    val core = Stroke(.8.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+    val filament = Stroke(.65.dp.toPx(), cap = StrokeCap.Round)
+    val cyan = Color(0xFF24EDFA)
+    val hot = Color(0xFFEAFFFF)
     onDrawBehind {
-        drawPath(rail, tint.copy(alpha = .52f), style = line)
-        val head = (phase.value + offset) * perimeter
+        drawPath(rail, tint.copy(alpha = .30f), style = line)
+        val progress = phase.value + offset
+        val head = progress * perimeter
+        val bends = shapes[(progress * 16).toInt() % shapes.size]
         bolt.reset()
+        forks.reset()
         for (i in bends.indices) {
             val distance = (head + perimeter - spacing * (bends.lastIndex - i)) % perimeter
             measure.getPosTan(distance, position, tangent)
-            val bend = bends[i] * amplitude
-            val x = position[0] - tangent[1] * bend
-            val y = position[1] + tangent[0] * bend
+            val tx = tangent[0]
+            val ty = tangent[1]
+            val bend = bends[i]
+            val x = position[0] - ty * bend
+            val y = position[1] + tx * bend
             if (i == 0) bolt.moveTo(x, y) else bolt.lineTo(x, y)
+            if (i == 5 || i == 12) {
+                val spread = if (i == 5) spacing else -spacing
+                forks.moveTo(x, y)
+                forks.relativeLineTo(-tx * spacing - ty * spread, -ty * spacing + tx * spread)
+                forks.relativeLineTo(-tx * spacing * 1.6f, -ty * spacing * 1.6f)
+                forks.relativeLineTo(-tx * spacing - ty * spread, -ty * spacing + tx * spread)
+            }
         }
-        drawPath(bolt, spark.copy(alpha = .40f), style = halo)
-        drawPath(bolt, spark, style = core)
-        val tip = Offset(position[0], position[1])
-        drawCircle(Color(0xFF7CEFFF), 2.dp.toPx(), tip)
-        drawCircle(Color.White, 1.dp.toPx(), tip)
+        drawPath(bolt, cyan.copy(alpha = .16f), style = glow)
+        drawPath(bolt, cyan, style = arc)
+        drawPath(forks, cyan.copy(alpha = .85f), style = filament)
+        drawPath(bolt, hot, style = core)
+        val tip = Offset(position[0] - tangent[1] * bends.last(), position[1] + tangent[0] * bends.last())
+        drawCircle(hot, 1.15.dp.toPx(), tip)
+        drawCircle(cyan, .55.dp.toPx(), tip + Offset(tangent[0], tangent[1]) * (spacing * 2.4f))
     }
 }
