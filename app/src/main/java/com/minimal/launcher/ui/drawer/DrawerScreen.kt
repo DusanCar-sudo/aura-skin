@@ -14,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.minimal.launcher.R
 import com.minimal.launcher.model.AppItem
+import com.minimal.launcher.ui.components.rememberSparkPhase
 import com.minimal.launcher.ui.components.AppListItem
 import com.minimal.launcher.ui.components.AppMenuSheet
 import com.minimal.launcher.ui.components.SearchField
@@ -59,13 +60,14 @@ fun DrawerScreen(
                 )
                 Spacer(modifier = Modifier.weight(1f))
             } else {
+                val sparkPhase = if (showIcons) rememberSparkPhase() else null
                 LazyVerticalGrid(columns = GridCells.Adaptive(76.dp),
                     contentPadding = PaddingValues(12.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(uiState.visibleApps, key = { it.packageName }) { app ->
                         AppListItem(
-                            app = app, showIcons = showIcons,
+                            app = app, sparkPhase = sparkPhase,
                             onClick = { onAppClick(app) },
                             onLongClick = { onAppLongPress(app) }
                         )
