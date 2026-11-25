@@ -16,6 +16,7 @@ import com.minimal.launcher.data.HiddenAppsRepository
 import com.minimal.launcher.data.SettingsRepository
 import com.minimal.launcher.model.ThemeMode
 import com.minimal.launcher.theme.MinimalLauncherTheme
+import com.minimal.launcher.ui.charging.ChargingSurface
 import com.minimal.launcher.ui.drawer.DrawerScreen
 import com.minimal.launcher.ui.drawer.DrawerViewModel
 import com.minimal.launcher.ui.home.HomeScreen
@@ -67,13 +68,15 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    LauncherContent(
-                        homeRequest = homeRequest,
-                        appsRepository = appsRepository,
-                        favoritesRepository = favoritesRepository,
-                        hiddenAppsRepository = hiddenAppsRepository,
-                        settingsRepository = settingsRepository
-                    )
+                    ChargingSurface(window) {
+                        LauncherContent(
+                            homeRequest = homeRequest,
+                            appsRepository = appsRepository,
+                            favoritesRepository = favoritesRepository,
+                            hiddenAppsRepository = hiddenAppsRepository,
+                            settingsRepository = settingsRepository
+                        )
+                    }
                 }
             }
         }

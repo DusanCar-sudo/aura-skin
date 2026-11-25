@@ -7,6 +7,8 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.State
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
@@ -20,7 +22,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun rememberSparkPhase(): State<Float> {
+fun rememberSparkPhase(scrolling: Boolean): State<Float> {
+    if (scrolling) return remember { mutableFloatStateOf(0f) }
     val clock = rememberInfiniteTransition(label = "Icon outlines")
     return clock.animateFloat(
         initialValue = 0f, targetValue = 1f,
