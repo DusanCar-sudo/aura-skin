@@ -32,6 +32,21 @@ class FavoritesRepository(private val context: Context) {
         preferences[FAVORITES_KEY] ?: DEFAULT_FAVORITES
     }
     
+    val foldersFlow = context.dataStore.data.map { prefs ->
+        prefs.asMap().entries.filter { it.key.name.startsWith("folder/") }
+            .associate { it.key.name.removePrefix("folder/") to it.value.toString() }
+    }
+
+    suspend fun placeApps(packages: Set<String>, folder: String) {
+        context.dataStore.edit { prefs ->
+            prefs[FAVORITES_KEY] = (prefs[FAVORITES_KEY] ?: DEFAULT_FAVORITES) + packages
+            for (pkg in packages) {
+                val key = androidx.datastore.preferences.core.stringPreferencesKey("folder/$pkg")
+                if (folder.isBlank()) prefs.remove(key) else prefs[key] = folder.trim()
+            }
+        }
+    }
+
     suspend fun setFavorites(packages: Set<String>) {
         context.dataStore.edit { preferences ->
             preferences[FAVORITES_KEY] = packages
@@ -49,6 +64,7 @@ class FavoritesRepository(private val context: Context) {
         context.dataStore.edit { preferences ->
             val current = preferences[FAVORITES_KEY] ?: DEFAULT_FAVORITES
             preferences[FAVORITES_KEY] = current - packageName
+            preferences.remove(androidx.datastore.preferences.core.stringPreferencesKey("folder/$packageName"))
         }
     }
     

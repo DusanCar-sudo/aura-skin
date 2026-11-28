@@ -48,6 +48,7 @@ fun WeatherWidget() {
     var editing by remember { mutableStateOf(false) }
     var attempt by remember { mutableIntStateOf(0) }
     var forecast by remember(city) { mutableStateOf(prefs.getString("forecast", "").orEmpty()) }
+    var sky by remember(city) { mutableStateOf(prefs.getString("sky", null) ?: forecast.substringBefore("\n").substringAfterLast(" · ", "")) }
     var message by remember(city) { mutableStateOf("") }
     LaunchedEffect(city, attempt) {
         if (city.isBlank()) return@LaunchedEffect
@@ -66,10 +67,11 @@ fun WeatherWidget() {
                     val temp = current.getDouble("temperature_2m").roundToInt()
                     val sky = condition(current.getInt("weather_code"))
                     val stamp = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date())
-                    "${place.getString("name")} · $temp°C · $sky\nOpen-Meteo · $stamp"
+                    sky to "${place.getString("name")} · $temp°C · $sky\nOpen-Meteo · $stamp"
                 }
-                forecast = reading
-                prefs.edit().putString("forecast", reading).putLong("updated", System.currentTimeMillis()).apply()
+                sky = reading.first
+                forecast = reading.second
+                prefs.edit().putString("sky", sky).putString("forecast", forecast).putLong("updated", System.currentTimeMillis()).apply()
                 message = ""
             } catch (cancel: CancellationException) {
                 throw cancel
@@ -82,6 +84,8 @@ fun WeatherWidget() {
         }
     }
     OutlinedButton(onClick = { editing = true }) {
+        WeatherMotion(sky)
+        Spacer(Modifier.width(8.dp))
         Text(listOf(forecast, message).filter { it.isNotEmpty() }.joinToString("\n")
             .ifEmpty { if (city.isBlank()) "Weather · Choose city" else city })
     }
@@ -92,7 +96,7 @@ fun WeatherWidget() {
             confirmButton = { TextButton(enabled = input.isNotBlank(), onClick = {
                 val query = input.trim()
                 if (query != city) {
-                    prefs.edit().putString("city", query).remove("forecast").remove("updated").apply()
+                    prefs.edit().putString("city", query).remove("sky").remove("forecast").remove("updated").apply()
                     city = query
                 } else prefs.edit().remove("updated").apply()
                 attempt++

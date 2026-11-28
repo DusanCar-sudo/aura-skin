@@ -31,3 +31,32 @@ internal fun Modifier.inwardEdgeSwipe(screen: Any, onSwipe: () -> Unit) = pointe
         }
     }
 }
+
+/** Bottom strip launcher navigation: horizontal swipes switch Home/Drawer; vertical swipes open/close it. */
+internal fun Modifier.bottomEdgeNavigation(screen: Any, onLeft: () -> Unit, onRight: () -> Unit,
+    onUp: () -> Unit, onDown: () -> Unit) = pointerInput(screen) {
+    val edgeHeight = 76.dp.toPx()
+    val threshold = 42.dp.toPx()
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false)
+        if (down.position.y < size.height - edgeHeight) return@awaitEachGesture
+        val origin = down.position
+        var handled = false
+        while (true) {
+            val event = awaitPointerEvent()
+            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+            val dx = change.position.x - origin.x
+            val dy = change.position.y - origin.y
+            if (!handled && maxOf(abs(dx), abs(dy)) > threshold && abs(dx) > abs(dy) * 1.15f) {
+                if (dx < 0) onLeft() else onRight()
+                change.consume()
+                handled = true
+            } else if (!handled && !change.pressed) {
+                if (dy < -threshold && abs(dy) > abs(dx) * 1.15f) onUp()
+                else if (dy > threshold && abs(dy) > abs(dx) * 1.15f) onDown()
+                handled = true
+            }
+            if (!change.pressed) break
+        }
+    }
+}

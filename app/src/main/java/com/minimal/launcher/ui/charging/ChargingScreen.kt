@@ -5,19 +5,30 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import com.minimal.launcher.R
 import android.graphics.Color as AndroidColor
 import android.graphics.Paint
+import android.os.Build
+import android.view.WindowManager.LayoutParams
 import android.os.BatteryManager
 import android.view.Window
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
@@ -36,7 +47,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import kotlin.math.*
 
 @Composable
-fun ChargingSurface(window: Window, launcher: @Composable () -> Unit) {
+fun ChargingSurface(window: Window, enabled: Boolean, homeRequest: Int, onDisable: () -> Unit, launcher: @Composable () -> Unit) {
     val context = LocalContext.current
     var powered by remember { mutableStateOf(false) }
     var dismissed by rememberSaveable { mutableStateOf(false) }
@@ -56,24 +67,47 @@ fun ChargingSurface(window: Window, launcher: @Composable () -> Unit) {
         context.registerReceiver(receiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         onDispose { context.unregisterReceiver(receiver) }
     }
-    if (!powered || dismissed) {
+    LaunchedEffect(homeRequest) { if (homeRequest > 0) dismissed = true }
+    if (!enabled || !powered || dismissed) {
         launcher()
         return
     }
     DisposableEffect(window) {
         val bars = WindowCompat.getInsetsController(window, window.decorView)
+        val originalCutout = window.attributes.layoutInDisplayCutoutMode
+        val statusColor = window.statusBarColor
+        val navigationColor = window.navigationBarColor
+        window.attributes = window.attributes.apply {
+            layoutInDisplayCutoutMode = if (Build.VERSION.SDK_INT >= 30)
+                LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+            else LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.statusBarColor = AndroidColor.TRANSPARENT
+        window.navigationBarColor = AndroidColor.TRANSPARENT
         val behavior = bars.systemBarsBehavior
         bars.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         bars.hide(WindowInsetsCompat.Type.systemBars())
         onDispose {
+            WindowCompat.setDecorFitsSystemWindows(window, true)
+            window.attributes = window.attributes.apply { layoutInDisplayCutoutMode = originalCutout }
+            window.statusBarColor = statusColor
+            window.navigationBarColor = navigationColor
             bars.show(WindowInsetsCompat.Type.systemBars())
             bars.systemBarsBehavior = behavior
         }
     }
+    val touch = remember { FluidTouch() }
     BackHandler { dismissed = true }
-    Box(Modifier.fillMaxSize().background(Color(0xff092827))
-        .clickable(onClickLabel = "Dismiss charging animation") { dismissed = true }) {
-        VaporField()
+    Box(Modifier.fillMaxSize().background(Color(0xff1b141c))) {
+        Box(Modifier.fillMaxSize().followFluid(touch) { dismissed = true }
+        .semantics { onClick("Dismiss charging animation") { dismissed = true; true } }) {
+            VaporField(touch)
+        }
+        Row(Modifier.align(Alignment.TopCenter).padding(top = 44.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            androidx.compose.material3.FilledTonalButton(onClick = { dismissed = true }) { Text("Home") }
+            androidx.compose.material3.FilledTonalButton(onClick = { dismissed = true; onDisable() }) { Text("Turn off") }
+        }
         Text("ϟ  $percent%", color = Color.White, fontSize = 18.sp,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 46.dp)
                 .background(Color.Black.copy(alpha = .56f), CircleShape)
@@ -81,102 +115,125 @@ fun ChargingSurface(window: Window, launcher: @Composable () -> Unit) {
     }
 }
 
-private class VaporNoise {
-    private val size = 128
-    private val random = java.util.Random(7126)
-    private val samples = FloatArray(size * size) { random.nextFloat() }
+internal class FluidTouch {
+    var point by mutableStateOf(Offset.Zero)
+    var active by mutableStateOf(false)
+}
 
-    private fun sample(x: Int, y: Int) = samples[(y and 127) * size + (x and 127)]
-
-    private fun smoothNoise(x: Float, y: Float): Float {
-        val ix = floor(x).toInt()
-        val iy = floor(y).toInt()
-        val fx = (x - ix).let { it * it * (3 - 2 * it) }
-        val fy = (y - iy).let { it * it * (3 - 2 * it) }
-        val a = sample(ix, iy) * (1 - fx) + sample(ix + 1, iy) * fx
-        val b = sample(ix, iy + 1) * (1 - fx) + sample(ix + 1, iy + 1) * fx
-        return a * (1 - fy) + b * fy
-    }
-
-    fun cloud(x: Float, y: Float): Float {
-        var u = x
-        var v = y
-        var amplitude = .55f
-        var density = 0f
-        repeat(4) {
-            density += amplitude * smoothNoise(u, v)
-            val next = 1.72f * u - 1.14f * v + 17f
-            v = 1.14f * u + 1.72f * v + 9f
-            u = next
-            amplitude *= .5f
+// Observe the initial pass without consuming events needed by launcher icons and scrolling.
+internal fun Modifier.followFluid(touch: FluidTouch, onTap: (() -> Unit)? = null) = pointerInput(touch) {
+    try {
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            touch.point = down.position
+            touch.active = true
+            var tap = true
+            do {
+                val event = awaitPointerEvent(PointerEventPass.Initial)
+                val pointer = event.changes.firstOrNull { it.id == down.id } ?: break
+                touch.point = pointer.position
+                if (event.changes.size > 1 || (pointer.position - down.position).getDistance() > viewConfiguration.touchSlop)
+                    tap = false
+                if (!pointer.pressed) {
+                    if (tap && pointer.uptimeMillis - down.uptimeMillis < viewConfiguration.longPressTimeoutMillis) onTap?.invoke()
+                    break
+                }
+            } while (true)
+            touch.active = false
         }
-        return density
+    } finally {
+        touch.active = false
     }
 }
 
-private fun vaporTexture(layer: Int, noise: VaporNoise): Bitmap {
-    val width = 272
-    val height = 408
-    val pixels = IntArray(width * height)
-    val cool = layer == 0
-    for (y in 0 until height) for (x in 0 until width) {
-        val u = x.toFloat() / width
-        val v = y.toFloat() / height
-        val shift = 13f * layer
-        val curl = noise.cloud(2.7f * u + shift, 4.2f * v)
-        val twist = noise.cloud(3.4f * u + 8f, 3.9f * v + shift)
-        val folded = noise.cloud(4f * u + 3.4f * curl + shift, 6.2f * v + 3.6f * twist)
-        val mist = noise.cloud(5.2f * u + 4.2f * folded, 7.3f * v + 4.7f * curl + shift)
-        val center = if (cool) .42f + .24f * sin(6.5f * v + .3f)
-                     else .55f + .32f * sin(7.2f * v + 2.8f)
-        val across = (u - center + .8f * (curl - .5f)) / (.29f + .18f * twist)
-        val envelope = exp(-1.55f * across * across)
-        val ridge = exp(-abs(folded - .52f) * 19f)
-        val density = ((mist - .30f) * 1.65f + .48f * ridge).coerceIn(0f, 1f)
-        val alpha = (250 * envelope * density).toInt()
-        val tint = ((v - .25f) * 2.1f + (twist - .5f) * 1.7f).coerceIn(0f, 1f)
-        val light = (.54f + .65f * ridge + .25f * mist).coerceIn(0f, 1.16f)
-        fun channel(first: Int, second: Int) =
-            (((1 - tint) * first + tint * second) * light).toInt().coerceIn(0, 255)
-        pixels[y * width + x] = if (cool)
-            AndroidColor.argb(alpha, channel(75, 63), channel(235, 140), channel(140, 249))
-        else AndroidColor.argb(alpha, channel(255, 209), channel(132, 152), channel(60, 91))
-    }
-    return Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888)
-}
+// Keep the outer texture edges fixed as the knot travels toward the finger.
+private fun steer(value: Float, pivot: Float, target: Float, extent: Float): Float =
+    if (value < pivot) value * target / pivot
+    else target + (value - pivot) * (extent - target) / (extent - pivot)
+
+@Volatile private var vortexTexture: Bitmap? = null
 
 @Composable
-private fun VaporField() {
-    val clouds by produceState<List<Bitmap>>(emptyList()) {
+internal fun VaporField(touch: FluidTouch) {
+    val resources = LocalContext.current.resources
+    val graded by produceState<Bitmap?>(vortexTexture, resources) {
+        if (value != null) return@produceState
         value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-            val noise = VaporNoise()
-            List(2) { vaporTexture(it, noise) }
+            val source = BitmapFactory.decodeResource(resources, R.drawable.charging_vortex)
+            val pixels = IntArray(source.width * source.height)
+            source.getPixels(pixels, 0, source.width, 0, 0, source.width, source.height)
+            for (i in pixels.indices) {
+                val color = pixels[i]
+                val r = AndroidColor.red(color)
+                val g = AndroidColor.green(color)
+                val b = AndroidColor.blue(color)
+                val peak = maxOf(r, g, b)
+                val pink = ((r - g) / 68f).coerceIn(0f, 1f)
+                val white = ((minOf(r, g, b) - 180) / 58f).coerceIn(0f, 1f)
+                val depth = ((peak - 20) / 210f).coerceIn(0f, 1f)
+                val teal = (.5f + .5f * sin(8f * (i / source.width).toFloat() / source.height))
+                fun channel(cool: Float, warm: Float): Int {
+                    val hue = cool + (warm - cool) * pink
+                    return (7 + (hue * sqrt(depth) * (1 - white) + 248 * white)).toInt().coerceIn(0, 255)
+                }
+                pixels[i] = AndroidColor.rgb(channel(9f, 253f), channel(72f + teal * 177f, 49f),
+                    channel(253f - teal * 42f, 242f))
+            }
+            Bitmap.createBitmap(pixels, source.width, source.height, Bitmap.Config.ARGB_8888).also { vortexTexture = it }
         }
     }
-    val phase = rememberInfiniteTransition(label = "Charging vapor").animateFloat(
+    val texture = graded ?: return
+    val phase = rememberInfiniteTransition(label = "Charging vortex").animateFloat(
         initialValue = 0f, targetValue = (2 * PI).toFloat(),
-        animationSpec = infiniteRepeatable(tween(22000, easing = LinearEasing)), label = "Drift")
-    val cols = 18
-    val rows = 28
-    val vertices = remember { FloatArray((cols + 1) * (rows + 1) * 2) }
+        animationSpec = infiniteRepeatable(tween(14000, easing = LinearEasing)), label = "Smoke curl")
+    val influence = animateFloatAsState(if (touch.active) 1f else 0f,
+        animationSpec = tween(if (touch.active) 130 else 700), label = "Finger pull")
+    val columns = 48
+    val rows = 32
+    val vertices = remember { FloatArray((columns + 1) * (rows + 1) * 2) }
     val paint = remember { Paint(Paint.FILTER_BITMAP_FLAG) }
     Canvas(Modifier.fillMaxSize()) {
-        drawRect(Color(0xff09161e))
-        clouds.forEachIndexed { layer, texture ->
-            val time = if (layer == 0) phase.value else 2.1f - phase.value
-            var index = 0
-            for (j in 0..rows) {
-                val v = j.toFloat() / rows
-                for (i in 0..cols) {
-                    val u = i.toFloat() / cols
-                    val dx = .12f * sin(time + 5.6f * v + 1.4f * sin(3 * u - time))
-                    val dy = .09f * cos(time + 4.6f * u + 1.2f * sin(5 * v + time))
-                    // Overscan keeps the background covered as each veil drifts past the edges.
-                    vertices[index++] = size.width * (1.3f * u - .15f + dx)
-                    vertices[index++] = size.height * (1.22f * v - .11f + dy)
-                }
+        val portrait = size.height > size.width
+        val w = if (portrait) size.height else size.width
+        val h = if (portrait) size.width else size.height
+        val scale = max(w / texture.width, h / texture.height)
+        val time = phase.value
+        val width = texture.width * scale
+        val height = texture.height * scale
+        val restX = .54f * width + .29f * height * .9932f * cos(time)
+        val restY = .49f * height + .19f * height * .9932f * sin(time)
+        val finger = touch.point
+        val fingerX = (if (portrait) finger.y else finger.x) + (width-w)/2
+        val fingerY = (if (portrait) size.width-finger.x else finger.y) + (height-h)/2
+        val targetX = restX + influence.value * (fingerX.coerceIn(0f,width) - restX)
+        val targetY = restY + influence.value * (fingerY.coerceIn(0f,height) - restY)
+        var index = 0
+        for (row in 0..rows) {
+            val v = row.toFloat() / rows
+            for (column in 0..columns) {
+                val u = column.toFloat() / columns
+                val x = (u - .54f) * texture.width / texture.height
+                val y = v - .49f
+                val radius = sqrt(x*x + y*y)
+                val envelope = 16f * u * (1f-u) * v * (1f-v)
+                val angle = envelope * (.34f * sin(time - 10f * radius) +
+                    .12f * sin(2f*time + 9f*y + 3f*x))
+                // Move the luminous knot itself. More distant smoke follows later.
+                val follow = time - 3.8f * radius
+                val pull = envelope * exp(-2.4f * radius * radius)
+                val dx = x*cos(angle) - y*sin(angle) - x + .29f * pull * cos(follow)
+                val dy = x*sin(angle) + y*cos(angle) - y + .19f * pull * sin(follow)
+                vertices[index++] = (w-width)/2 + steer(u*width + dx*height, restX, targetX, width)
+                vertices[index++] = (h-height)/2 + steer((v+dy)*height, restY, targetY, height)
             }
-            drawContext.canvas.nativeCanvas.drawBitmapMesh(texture, cols, rows, vertices, 0, null, 0, paint)
         }
+        val canvas = drawContext.canvas.nativeCanvas
+        canvas.save()
+        if (portrait) {
+            canvas.translate(size.width, 0f)
+            canvas.rotate(90f)
+        }
+        canvas.drawBitmapMesh(texture, columns, rows, vertices, 0, null, 0, paint)
+        canvas.restore()
     }
 }

@@ -18,7 +18,10 @@ import com.minimal.launcher.data.SettingsRepository
 import com.minimal.launcher.model.ThemeMode
 import com.minimal.launcher.theme.MinimalLauncherTheme
 import com.minimal.launcher.ui.components.inwardEdgeSwipe
-import com.minimal.launcher.ui.components.MatrixBackground
+import com.minimal.launcher.ui.components.bottomEdgeNavigation
+import com.minimal.launcher.ui.components.LauncherBackdrop
+import com.minimal.launcher.model.Backdrop
+import kotlinx.coroutines.launch
 import com.minimal.launcher.ui.charging.ChargingSurface
 import com.minimal.launcher.ui.drawer.DrawerScreen
 import com.minimal.launcher.ui.drawer.DrawerViewModel
@@ -71,7 +74,11 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    ChargingSurface(window) {
+                    val charging by settingsRepository.chargingFlow.collectAsState(initial = false)
+                    val activityScope = rememberCoroutineScope()
+                    ChargingSurface(window, charging, homeRequest, onDisable = {
+                        activityScope.launch { settingsRepository.setCharging(false) }
+                    }) {
                         LauncherContent(
                             homeRequest = homeRequest,
                             appsRepository = appsRepository,
@@ -149,6 +156,9 @@ private fun LauncherContent(
         onDispose { context.unregisterReceiver(receiver) }
     }
 
+    val charging by settingsRepository.chargingFlow.collectAsState(initial = false)
+    val backdrop by settingsRepository.backdropFlow.collectAsState(initial = Backdrop.MATRIX)
+    val scope = rememberCoroutineScope()
     val showIcons by settingsRepository.showIconsFlow.collectAsState(initial = true)
     androidx.activity.compose.BackHandler(currentScreen != LauncherScreen.Home) {
         currentScreen = LauncherScreen.Home
@@ -159,12 +169,18 @@ private fun LauncherContent(
     }
     Box(Modifier.fillMaxSize().inwardEdgeSwipe(currentScreen) {
         if (currentScreen == LauncherScreen.Home) openDrawer() else currentScreen = LauncherScreen.Home
-    }) {
+    }.bottomEdgeNavigation(currentScreen,
+        onLeft = { if (currentScreen == LauncherScreen.Home) openDrawer() else currentScreen = LauncherScreen.Home },
+        onRight = { if (currentScreen == LauncherScreen.Home) openDrawer() else currentScreen = LauncherScreen.Home },
+        onUp = { if (currentScreen == LauncherScreen.Home) openDrawer() },
+        onDown = { if (currentScreen != LauncherScreen.Home) currentScreen = LauncherScreen.Home }
+    )) {
         when (currentScreen) {
             is LauncherScreen.Home -> {
                 val uiState by homeViewModel.uiState.collectAsState()
-                MatrixBackground {
+                LauncherBackdrop(backdrop) {
                     HomeScreen(
+                        onPlaceApps = homeViewModel::placeApps,
                         onSettings = { currentScreen = LauncherScreen.Settings },
                         showIcons = showIcons,
                         uiState = uiState,
@@ -180,7 +196,7 @@ private fun LauncherContent(
             }
             is LauncherScreen.Drawer -> {
                 val uiState by drawerViewModel.uiState.collectAsState()
-                MatrixBackground {
+                LauncherBackdrop(backdrop) {
                     DrawerScreen(
                         showIcons = showIcons,
                         uiState = uiState,
@@ -198,6 +214,9 @@ private fun LauncherContent(
             is LauncherScreen.Settings -> {
                 val uiState by settingsViewModel.uiState.collectAsState()
                 SettingsScreen(
+                    charging = charging, onCharging = { scope.launch { settingsRepository.setCharging(it) } },
+                    backdrop = backdrop,
+                    onBackdrop = { scope.launch { settingsRepository.setBackdrop(it) } },
                     uiState = uiState,
                     onThemeChange = settingsViewModel::setThemeMode,
                     onShowIconsChange = settingsViewModel::setShowIcons,

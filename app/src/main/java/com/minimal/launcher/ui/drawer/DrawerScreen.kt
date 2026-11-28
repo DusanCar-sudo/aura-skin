@@ -18,7 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.minimal.launcher.R
 import com.minimal.launcher.model.AppItem
-import com.minimal.launcher.ui.components.rememberSparkPhase
+import com.minimal.launcher.ui.components.travellingBolt
 import com.minimal.launcher.ui.components.AppListItem
 import com.minimal.launcher.ui.components.AppMenuSheet
 import com.minimal.launcher.ui.components.SearchField
@@ -71,14 +71,14 @@ fun DrawerScreen(
                 Spacer(modifier = Modifier.weight(1f))
             } else {
                 val gridState = rememberLazyGridState()
-                val sparkPhase = if (showIcons) rememberSparkPhase(gridState.isScrollInProgress) else null
+                val bolt = Modifier.travellingBolt(gridState, showIcons)
                 LazyVerticalGrid(state = gridState, columns = GridCells.Adaptive(76.dp),
                     contentPadding = PaddingValues(12.dp),
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize().then(bolt)
                 ) {
                     items(uiState.visibleApps, key = { it.packageName }) { app ->
                         AppListItem(
-                            app = app, sparkPhase = sparkPhase,
+                            app = app, showIcons = showIcons,
                             onClick = { onAppClick(app) },
                             onLongClick = { onAppLongPress(app) }
                         )

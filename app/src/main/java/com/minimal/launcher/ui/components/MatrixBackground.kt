@@ -41,7 +41,7 @@ fun MatrixBackground(content: @Composable () -> Unit) {
                         typeface = Typeface.MONOSPACE
                         textSize = 11.dp.toPx()
                     }
-                    val glyphs = "01:/+=|<>[]ｱｲｴｶｷｻｼﾂﾈﾊﾐﾘ"
+                    val glyphs = "АБВГДЂЕЖЗИЈКЛЉМНЊОПРСТЋУФХЦЧЏШ"
                     val rng = Random(603)
                     for (column in 0 until 29) {
                         val start = rng.nextInt(38)

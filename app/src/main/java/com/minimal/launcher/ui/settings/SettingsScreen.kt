@@ -1,5 +1,7 @@
 package com.minimal.launcher.ui.settings
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,12 +13,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.minimal.launcher.R
+import com.minimal.launcher.model.Backdrop
+import com.minimal.launcher.ui.components.LauncherBackdrop
 import com.minimal.launcher.model.ThemeMode
 import com.minimal.launcher.util.AppLauncher
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    charging: Boolean, onCharging: (Boolean) -> Unit,
+    backdrop: Backdrop,
+    onBackdrop: (Backdrop) -> Unit,
     uiState: SettingsUiState,
     onThemeChange: (ThemeMode) -> Unit,
     onShowIconsChange: (Boolean) -> Unit,
@@ -27,6 +34,27 @@ fun SettingsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var preview by remember { mutableStateOf<Backdrop?>(null) }
+    preview?.let { selected ->
+        AlertDialog(onDismissRequest = { preview = null }, title = { Text("Background") },
+            text = {
+                Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+                    Box(Modifier.fillMaxWidth().height(150.dp).clip(MaterialTheme.shapes.medium)) {
+                        LauncherBackdrop(selected)
+                    }
+                    Backdrop.values().forEach { choice ->
+                        Row(Modifier.fillMaxWidth().clickable { preview = choice }.padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(selected == choice, onClick = null)
+                            Spacer(Modifier.width(12.dp))
+                            Text(choice.title)
+                        }
+                    }
+                }
+            }, confirmButton = {
+                TextButton(onClick = { onBackdrop(selected); preview = null }) { Text("Apply") }
+            }, dismissButton = { TextButton(onClick = { preview = null }) { Text("Cancel") } })
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -44,6 +72,8 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            item { TextButton(onClick = { preview = backdrop }) { Text("Background · ${backdrop.title}") } }
+            item { SwitchSettingItem("Charging screensaver", charging, onCharging) }
             // Appearance Section
             item {
                 SectionHeader(title = stringResource(R.string.appearance))

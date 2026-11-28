@@ -16,6 +16,8 @@ data class HomeUiState(
     val currentTime: String = "",
     val currentDate: String = "",
     val favorites: List<AppItem> = emptyList(),
+    val available: List<AppItem> = emptyList(),
+    val folders: Map<String, String> = emptyMap(),
     val selectedApp: AppItem? = null,
     val showAppMenu: Boolean = false
 )
@@ -38,6 +40,9 @@ class HomeViewModel(
         loadApps()
         observeFavorites()
         observeHiddenApps()
+        viewModelScope.launch { favoritesRepository.foldersFlow.collect { folders ->
+            _uiState.update { it.copy(folders = folders) }
+        } }
         updateTime()
     }
     
@@ -73,7 +78,7 @@ class HomeViewModel(
         val apps = allApps.value
         
         val favoriteApps = apps.filter { it.packageName in favorites && it.packageName !in hidden }
-        _uiState.value = _uiState.value.copy(favorites = favoriteApps)
+        _uiState.value = _uiState.value.copy(favorites = favoriteApps, available = apps.filter { it.packageName !in hidden })
     }
     
     private fun updateTime() {
@@ -91,6 +96,10 @@ class HomeViewModel(
         }
     }
     
+    fun placeApps(packages: Set<String>, folder: String) {
+        viewModelScope.launch { favoritesRepository.placeApps(packages, folder) }
+    }
+
     fun onAppClick(app: AppItem) {
         viewModelScope.launch {
             appsRepository.launchApp(app.packageName)

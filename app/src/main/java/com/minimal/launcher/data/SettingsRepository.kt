@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.minimal.launcher.model.Backdrop
 import com.minimal.launcher.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -13,11 +14,25 @@ import kotlinx.coroutines.flow.map
 class SettingsRepository(private val context: Context) {
     
     companion object {
+        private val CHARGING = booleanPreferencesKey("charging_screensaver")
+        private val BACKDROP = stringPreferencesKey("backdrop")
         private val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
         private val SHOW_ICONS_KEY = booleanPreferencesKey("show_icons")
         private val ONBOARDING_COMPLETED_KEY = booleanPreferencesKey("has_completed_onboarding")
     }
     
+    val chargingFlow = context.dataStore.data.map { it[CHARGING] ?: true }
+
+    suspend fun setCharging(enabled: Boolean) { context.dataStore.edit { it[CHARGING] = enabled } }
+
+    val backdropFlow = context.dataStore.data.map { prefs ->
+        Backdrop.values().firstOrNull { it.name == prefs[BACKDROP] } ?: Backdrop.MATRIX
+    }
+
+    suspend fun setBackdrop(style: Backdrop) {
+        context.dataStore.edit { it[BACKDROP] = style.name }
+    }
+
     val themeModeFlow: Flow<ThemeMode> = context.dataStore.data.map { preferences ->
         val themeString = preferences[THEME_MODE_KEY] ?: "SYSTEM"
         ThemeMode.valueOf(themeString)

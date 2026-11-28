@@ -13,11 +13,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.minimal.launcher.R
 import com.minimal.launcher.model.AppItem
-import com.minimal.launcher.ui.components.rememberSparkPhase
+import com.minimal.launcher.ui.components.travellingBolt
 import com.minimal.launcher.ui.components.AppListItem
 import com.minimal.launcher.ui.components.AppMenuSheet
 import com.minimal.launcher.ui.components.ClockHeader
@@ -25,6 +29,7 @@ import com.minimal.launcher.ui.components.ClockHeader
 @Composable
 fun HomeScreen(
     uiState: HomeUiState,
+    onPlaceApps: (Set<String>, String) -> Unit,
     showIcons: Boolean,
     onAppClick: (AppItem) -> Unit,
     onAppLongPress: (AppItem) -> Unit,
@@ -36,6 +41,10 @@ fun HomeScreen(
     onOpenAppInfo: (AppItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var picking by remember { mutableStateOf(false) }
+    var opened by remember { mutableStateOf<String?>(null) }
+    var folderBounds by remember { mutableStateOf<Map<String, Rect>>(emptyMap()) }
+    val groups = uiState.favorites.groupBy { uiState.folders[it.packageName].orEmpty() }
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -49,7 +58,8 @@ fun HomeScreen(
     ) {
         Column(Modifier.fillMaxSize().padding(horizontal = 18.dp),
             horizontalAlignment = Alignment.CenterHorizontally) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                TextButton(onClick = { picking = true }) { Text("Add apps") }
                 TextButton(onClick = onSettings) { Text(stringResource(R.string.settings)) }
             }
             ClockHeader(uiState.currentTime, uiState.currentDate)
@@ -59,10 +69,19 @@ fun HomeScreen(
                     Text(stringResource(R.string.no_favorites), style = MaterialTheme.typography.bodyMedium)
                 } else {
                     val gridState = rememberLazyGridState()
-                    val sparkPhase = if (showIcons) rememberSparkPhase(gridState.isScrollInProgress) else null
-                    LazyVerticalGrid(state = gridState, columns = GridCells.Adaptive(76.dp)) {
-                        items(uiState.favorites, key = { it.packageName }) { app ->
-                            AppListItem(app, sparkPhase, { onAppClick(app) }, { onAppLongPress(app) })
+                    val bolt = Modifier.travellingBolt(gridState, showIcons)
+                    LazyVerticalGrid(modifier = bolt, state = gridState, columns = GridCells.Adaptive(76.dp)) {
+                        items(groups.keys.filter { it.isNotEmpty() }.sorted(), key = { "folder/$it" }) { name ->
+                            FolderTile(name, groups.getValue(name).size, modifier = Modifier.onGloballyPositioned {
+                                folderBounds = folderBounds + (name to it.boundsInRoot())
+                            }) { opened = name }
+                        }
+                        items(groups[""].orEmpty(), key = { it.packageName }) { app ->
+                            AppListItem(app, showIcons, { onAppClick(app) }, { onAppLongPress(app) }) { dropAt ->
+                                folderBounds.entries.firstOrNull { it.value.contains(dropAt) }?.key?.let { folder ->
+                                    onPlaceApps(setOf(app.packageName), folder)
+                                }
+                            }
                         }
                     }
                 }
@@ -70,6 +89,17 @@ fun HomeScreen(
             FilledTonalButton(onClick = onOpenDrawer, modifier = Modifier.padding(vertical = 18.dp)) {
                 Text(stringResource(R.string.all_apps))
             }
+        }
+
+        if (picking) {
+            HomeAppPicker(uiState.available, opened.orEmpty(), onDismiss = { picking = false }) { apps, folder ->
+                onPlaceApps(apps, folder)
+                picking = false
+                opened = null
+            }
+        } else opened?.let { name ->
+            FolderPanel(name, groups[name].orEmpty(), showIcons, onAppClick,
+                onEdit = { picking = true }, onDismiss = { opened = null })
         }
 
         // App Menu Sheet
